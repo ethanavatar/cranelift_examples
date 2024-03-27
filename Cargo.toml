@@ -9,4 +9,5 @@ cranelift-native = "0.106.0"
 cranelift-module = "0.106.0"
 cranelift-frontend = "0.106.0"
 cranelift-object = "0.106.0"
+cc = "1.0.90"
 
