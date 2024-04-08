@@ -1,7 +1,5 @@
-
 use std::io::Write;
 
-use cranelift_codegen::Context;
 use cranelift_codegen::ir::AbiParam;
 use cranelift_codegen::ir::InstBuilder;
 
@@ -10,6 +8,7 @@ use cranelift_frontend::FunctionBuilderContext;
 
 use cranelift_jit::JITBuilder;
 use cranelift_jit::JITModule;
+
 use cranelift_module::Module;
 use cranelift_module::Linkage;
 use cranelift_module::DataDescription;
@@ -103,28 +102,49 @@ fn main() {
     func_builder.finalize();
 
     // ------------------------------------------------------------------------
-    // transmute the function into a rust function
-    
-    let name = "main";
-
+    // declare and define the main function
+ 
+    let function_name = "main";
     let id = jit_module
-        .declare_function(name, Linkage::Export, &codegen_context.func.signature)
+        .declare_function(function_name, Linkage::Export, &codegen_context.func.signature)
         .unwrap_or_else(|e| { dbg!(e); panic!("failed to declare function") });
 
     jit_module
         .define_function(id, &mut codegen_context)
         .unwrap_or_else(|e| { dbg!(e); panic!("failed to define function") });
 
-    //println!("---- Function: {} ----", name);
-    //println!("{}", codegen_context.func.display());
+    // ------------------------------------------------------------------------
+    // write the IR to a file
+
+    let function_string = codegen_context.func.display().to_string();
+
+    let out_dir = std::path::Path::new("out/hello_jit");
+
+    if !out_dir.exists() {
+        std::fs::create_dir_all(out_dir)
+            .expect("error creating output directory");
+    }
+
+    let mut readable_ir = std::fs::File::create("out/hello_jit/hello.clir").unwrap();
+    readable_ir.write_all(function_string.as_bytes())
+        .expect("error writing IR to file");
+
+    // ------------------------------------------------------------------------
+    // compile the function
 
     jit_module.clear_context(&mut codegen_context);
     jit_module.finalize_definitions()
         .unwrap_or_else(|e| { dbg!(e); panic!("failed to finalize definitions") });
 
-    let code_ptr = jit_module.get_finalized_function(id);
-    let code_fn = unsafe { std::mem::transmute::<_, fn(i64) -> i64>(code_ptr) };
+    // ------------------------------------------------------------------------
+    // transmute the function into a rust function and call it
 
+    let code_ptr = jit_module.get_finalized_function(id);
+    let code_fn = unsafe {
+        std::mem::transmute::<_, fn(i64) -> i64>(code_ptr)
+    };
+
+    // call the function
     code_fn(0);
 }
 

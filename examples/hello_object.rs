@@ -107,11 +107,20 @@ fn main() {
 
     // ------------------------------------------------------------------------
     // write a readable version of the IR to a file
+    
+    let out_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("out")
+        .join("hello_object");
+    if !out_dir.exists() {
+        println!("Creating out directory: {:?}", out_dir);
+        std::fs::create_dir_all(&out_dir)
+            .expect("error creating out directory");
+    }
 
     let func_string = &codegen_context.func
         .display()
         .to_string();
-    let mut readable_ir = std::fs::File::create("out/hello.clir").unwrap();
+    let mut readable_ir = std::fs::File::create("out/hello_object/hello.clir").unwrap();
     readable_ir.write_all(func_string.as_bytes())
         .expect("error writing IR to file");
 
@@ -136,14 +145,7 @@ fn main() {
     // ------------------------------------------------------------------------
     // write the object file to disk
     
-    let out_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("out");
-    if !out_dir.exists() {
-        println!("Creating out directory: {:?}", out_dir);
-        std::fs::create_dir_all(&out_dir)
-            .expect("error creating out directory");
-    }
-
-    let mut file = std::fs::File::create("out/hello.o").unwrap();
+    let mut file = std::fs::File::create("out/hello_object/hello.o").unwrap();
     file.write_all(&data_product[..])
         .expect("error writing object file");
 
@@ -152,11 +154,11 @@ fn main() {
     // compile the object file to an executable
 
     // TODO: maybe use the cc crate to do this?
-    println!("+ clang -o out/hello.exe out/hello.o");
+    println!("+ clang -o out/hello_object/hello.exe out/hello_object/hello.o");
     std::process::Command::new("clang")
         .arg("-o")
-        .arg("out/hello.exe")
-        .arg("out/hello.o")
+        .arg("out/hello_object/hello.out")
+        .arg("out/hello_object/hello.o")
         .output()
         .expect("failed to execute process");
 }
